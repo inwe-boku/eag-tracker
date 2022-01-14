@@ -1,0 +1,10 @@
+
+*.pper
+data/authentification
+*.csv
+data/passwd-entso-e
+.Rproj.user/
+.httr-oauth
+.Rhistory
+eag-tracker.Rproj
+figures/eag-tracker.png
