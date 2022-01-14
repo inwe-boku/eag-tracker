@@ -17,7 +17,7 @@ library(feather)
 ## Verwendung
 Verwendung: das Skript eag-tracker.R laufen lassen.
 
-Sollen auch entso-e Daten verwendet werden (Achtung! Langer Download!), kann das Skript ega-tracker-entso-e.R ausgeführt werden. Hierzu ist ein Account auf der [entso-e transparency platform notwendig][https://keycloak-transparency.entsoe.eu/auth/realms/tp/login-actions/registration?client_id=tp-web&tab_id=9udiCmkuvB8].
+Sollen auch entso-e Daten verwendet werden (Achtung! Langer Download!), kann das Skript ega-tracker-entso-e.R ausgeführt werden. Hierzu ist ein Account auf der [entso-e transparency platform notwendig](https://keycloak-transparency.entsoe.eu/auth/realms/tp/login-actions/registration?client_id=tp-web&tab_id=9udiCmkuvB8).
 
 
 
