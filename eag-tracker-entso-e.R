@@ -1,11 +1,18 @@
 source("src/functions.R")
 
-e_control_data<-get_e_control_data()
+e_control_data<-eag_tracker_econtrol()
+e_control_data %>% filter(year(Date)==2020) %>% tail()
 
-entsoe_e_data<-get_entso_e_data()
+
+
+
+entso_e_data <- get_entso_e_data(startyear = 2022, 
+                                endyear = 2022, 
+                                startmonth = 1, 
+                                endmonth = 2)
 
 e_control_data %>% 
-  bind_rows(entso_e_data)
+  bind_rows(entso_e_data) %>% 
   ggplot(aes(x=Date,y=Value))+
   geom_line(aes(col=Type),size=1)+
   facet_wrap(.~Technology,scale="free") +

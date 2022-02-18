@@ -1,9 +1,19 @@
 source("src/functions.R")
 
-e_control_data<-get_e_control_data()
+library(httr)
+library(rvest)
+library(htmltab)
 
-e_control_data %>% 
-  ggplot(aes(x=Date,y=Value))+
+create_full_cache_apg("realized")
+create_full_cache_apg("forecast")
+
+startdate <- as.POSIXct("2022-01-01")
+enddate <- as.POSIXct("2022-02-17")
+apg_econtrol_data<-eag_tracker_apg_econtrol(startdate,enddate)
+
+
+apg_econtrol_data %>% 
+  ggplot(aes(x=Date,y=Generation))+
   geom_line(aes(col=Type),size=1)+
   facet_wrap(.~Technology,scale="free") +
   scale_color_manual(values=COLORS3) +
@@ -11,10 +21,7 @@ e_control_data %>%
   ylab("Erzeugung (TWh)") +
   ylim(c(0,NA)) +
   xlab("Datum") +
-  labs(caption = "Quelle: EAG, e-control")
+  labs(caption = "Quelle: APG, EAG, e-control")
 ggsave(FILENAME_FIGURE)
 
-tweet_result()
-
-
-  
+tweet_result("12/21", "12/20")
