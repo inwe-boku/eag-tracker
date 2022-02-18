@@ -2,13 +2,9 @@ library(tidyverse)
 library(lubridate)
 library(tidyquant)
 library(zoo)
+library(jsonlite)
 library(twitteR)
 library(feather)
-library(RCurl)
-library(irenabpdata)
-
-#irenabpdata::download_clean_save_irena()
-
 
 COLORS3<-c("#c72321",
            "#0d8085",
@@ -22,7 +18,6 @@ CACHE_AGP_DATA_PATH_FILE<-paste0(DATA_DIR,CACHE_AGP_DATA_FILE)
 
 create_cache_agp<-function(year, type="realized"){
   
-  #startdate<-as.POSIXct("2015-01-01")
   startdate<-as.POSIXct(paste0(year,"-01-01"))
   enddate<-as.POSIXct(paste0(year,"-12-31"))
   table<-get_apg_data(startdate, enddate, type)
@@ -60,8 +55,6 @@ create_full_cache_apg<-function(type = "realized"){
   }
   
   all_data %>% write_csv(filename_cache_all_years(type))
-  
-  
   
 }
 
@@ -110,58 +103,14 @@ production_annual_econtrol<-function(production){
   
 
 }
-
-production_annual_bp<-function(){
-  bp <- load_db(irenabpdata::get_bp_db_files()[1])
-  bp %>% 
-    filter(Year==2020) %>% 
-    filter(Country=="Austria") %>% 
-    filter(Variable %in% c("Solar Generation - TWh",
-                           "Wind Generation - TWh",
-                           "Hydro Generation - TWh",
-                           "Geo Biomass Other - TWh"))
-}
-
 production_2020<-function(production_econtrol){
   
   econtrol_2020<-production_annual_econtrol(production_econtrol) %>% 
     filter(Year==2020) %>% 
-    dplyr::select(Year,Technology,econtrol=Value)
+    dplyr::select(Year,Technology,Value)
   
-  bp <- load_db(irenabpdata::get_bp_db_files()[1])
-  generation_2020_joint<-bp %>% 
-    filter(Year==2020) %>% 
-    filter(Country=="Austria") %>% 
-    filter(Variable %in% c("Solar Generation - TWh")) %>% 
-    mutate(Technology="PV") %>%
-    mutate(Value=Value*10^6) %>% 
-    dplyr::select(Year,Technology,BP=Value) %>% 
-    right_join(econtrol_2020) %>% 
-    mutate(Value=ifelse(Technology=="PV",BP,econtrol)) %>% 
-    dplyr::select(Year,Technology,Value) 
+  return(econtrol_2020)
   
-  return(generation_2020_joint)
-  
-  
-}
-
-get_bp_pv_monthly<-function(){
-  bp <- load_db(irenabpdata::get_bp_db_files()[1])
-  
-  all_dates <- tibble(Country="Austria",Variable="PV",Unit="Terawatt-hours",Date=seq(as.POSIXct(paste0("2010-01-01")),as.POSIXct(paste0("2030-12-01")),by="month")) %>% 
-    mutate(Year=year(Date))
-  
-  bp %>% 
-    filter(Country=="Austria") %>% 
-    filter(Variable %in% c("Solar Generation - TWh")) %>% 
-    mutate(Variable="PV") %>% 
-    filter(Year>2008) %>% 
-    mutate(Date=as.POSIXct(paste0(Year,"-12-01"))) %>% 
-    full_join(all_dates) %>% 
-    arrange(Date) %>% 
-    mutate(Value=na.approx(Value,maxgap=14)) %>%
-    filter(Year>2009) %>% 
-    return()
   
 }
 
@@ -197,10 +146,6 @@ eag_tracker_econtrol<-function(){
     mutate(Value=na.approx(Value,maxgap=11*12)) %>% 
     mutate(Type="Ziel")
   
-  bp_pv_monthly<-get_bp_pv_monthly() %>% 
-    dplyr::select(Date,Technology=Variable,Value) %>% 
-    mutate(Type="BP World Review")
-  
   bind_rows(target,
             production %>% 
               ungroup() %>% 
@@ -209,8 +154,7 @@ eag_tracker_econtrol<-function(){
               mutate(Value=rollmean(12*Value,k=12,align="right",fill=NA)) %>% 
               #filter(year(Date)>2019) %>% 
               mutate(Type="Realisiert") %>% 
-              mutate(Value=Value/10^6),
-            bp_pv_monthly) %>% 
+              mutate(Value=Value/10^6)) %>% 
     return()
 
   
@@ -316,7 +260,7 @@ tweet_result<-function(additional_text,
   
   
   tweet1<-updateStatus(text = paste0("EAG Tracker: Wie geht der Ausbau der Erneuerbaren in Österreich voran?",
-                                     "Datenstand Wind-, Wasserkraft: ",additional_text, " Datenstand PV, Biomasse: ", additional_text_2),
+                                     "Datenstand Wind-, Wasserkraft, PV: ",additional_text, " Datenstand Biomasse: ", additional_text_2),
                        mediaPath = FILENAME_FIGURE)
   
   tweet2<-updateStatus(text = "Die Grafik zeigt die erneuerbare Produktion in Österreich im Vergleich zu einem linearen Ausbaupfad konsistent mit dem EAG.",
@@ -325,11 +269,14 @@ tweet_result<-function(additional_text,
   tweet3<-updateStatus(text = "Dabei wird die Summe der Produktion in den jeweils letzten 12 Monaten dargestellt, es handelt sich also um Jahreswerte.",
                        inReplyTo=tweet2$id)
   
-  tweet4<-updateStatus(text = "Die Wind- und Wasserkraftdaten werden rund 6-8 Wochen verspätet veröffentlicht, PV und Biomassedaten gibt es nur jährlich.",
+  tweet4<-updateStatus(text = "Die PV-Daten sind tagesaktuell, Wind- und Wasserkraftdaten werden rund 6 Wochen verspätet veröffentlicht,  und Biomassedaten gibt es nur jährlich.",
                        inReplyTo=tweet3$id)
   
-  tweet5<-updateStatus(text = "Der #RStats Source Code ist verfügbar auf https://github.com/inwe-boku/eag-tracker",
+  tweet5<-updateStatus(text = "Wasserkraft, Wind- und Biomassedaten stammen von e-control und sind Ex-Postproduktion, PV-Daten sind der APG-Prognose entnommen und enthalten den Eigenverbrauch an PV-Strom.",
                        inReplyTo=tweet4$id)
+  
+  tweet6<-updateStatus(text = "Der #RStats Source Code ist verfügbar auf https://github.com/inwe-boku/eag-tracker",
+                       inReplyTo=tweet5$id)
   
 }
 

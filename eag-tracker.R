@@ -1,14 +1,10 @@
 source("src/functions.R")
 
-library(httr)
-library(rvest)
-library(htmltab)
-
 create_full_cache_apg("realized")
 create_full_cache_apg("forecast")
 
 startdate <- as.POSIXct("2022-01-01")
-enddate <- as.POSIXct("2022-02-17")
+enddate <- as.POSIXct("2022-02-01")
 apg_econtrol_data<-eag_tracker_apg_econtrol(startdate,enddate)
 
 
